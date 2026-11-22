@@ -1,0 +1,12 @@
+data/raw/
+data/processed/
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+data/raw/
+data/processed/
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+.DS_Store
+*.pyc
