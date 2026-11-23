@@ -127,6 +127,10 @@ if __name__ == "__main__":
     df = decode_missing(load_raw(raw_path))
     check_keys(df)
 
+    # Validate the neighborhood lookup and preserve the original schema.
+    df = join_neighborhood(df)
+    df = df.drop(columns=["Neighborhood Full Name"])
+
     df = clean_year_conflicts(df)
 
     df.to_csv(out_path, index=False)
