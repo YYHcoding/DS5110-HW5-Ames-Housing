@@ -53,12 +53,18 @@ NEIGHBORHOOD_NAMES = {
 
 def load_raw(path: str) -> pd.DataFrame:
     """Load with keep_default_na=False so that "NA" and "None" survive as strings."""
-    return pd.read_csv(
-        raw_path,
+    default = pd.read_csv(path, sep="\t")
+    preserved = pd.read_csv(
+        path,
         sep="\t",
         keep_default_na=False,
         na_values=[""],
     )
+    for column in preserved.columns:
+        masked = preserved.loc[default[column].isna() & preserved[column].notna(), column]
+        if not masked.empty:
+            print(f"{column}: default masks {masked.value_counts().to_dict()}")
+    return preserved
 
 def decode_missing(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -83,7 +89,8 @@ def check_keys(df: pd.DataFrame) -> None:
                 f"{duplicates} duplicates"
             )
 
-    print("PASS: Order and PID are unique and non-missing")
+    print("PASS: Order and PID each have zero missing or duplicate keys")
+    print(f"Exact duplicate rows: {df.duplicated().sum()}")
 
 def join_neighborhood(df: pd.DataFrame) -> pd.DataFrame:
     lookup = pd.DataFrame(
@@ -104,7 +111,9 @@ def join_neighborhood(df: pd.DataFrame) -> pd.DataFrame:
     if merged["Neighborhood Full Name"].isna().any():
         raise ValueError("Some neighborhoods were not matched")
 
+    print(f"Neighborhood join: {len(df)} input and {len(merged)} output rows")
     return merged
+
 def clean_year_conflicts(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
 

@@ -2,69 +2,106 @@
 
 ## 1. Provenance
 
-This analysis uses the Ames Housing dataset described by De Cock (2011), *Ames, Iowa: Alternative to the Boston Housing Data as an End of Semester Regression Project*, *Journal of Statistics Education*, 19(3). The original tab-delimited dataset was downloaded on November 19, 2026, from https://jse.amstat.org/v19n3/decock/AmesHousing.txt. The accompanying data dictionary is available at https://jse.amstat.org/v19n3/decock/DataDocumentation.txt.
+Dean De Cock’s [Ames Housing data](https://jse.amstat.org/v19n3/decock/AmesHousing.txt) (2011) were accessed on November 19, 2026. The raw file contains 2,930 sales and 82 columns. The downloader preserves any existing raw copy. The README links the data dictionary and JSE’s teaching-use policy.
 
-The dataset contains 2,930 observations and 82 original columns. The download script does not overwrite an existing raw file. Applicable reuse terms have not yet been independently verified.
+## 2. Validation
 
-## 2. Validation: Failures on the Raw File
+The raw file failed the two year checks listed in Table 1. We set the offending cells to missing and retained all 2,930 rows. The resulting data pass the schema, range, category, and cross-column checks.
 
-Validation covered the 82-column schema, numeric ranges, categorical constraints, and cross-column consistency. The raw dataset failed two checks:
+## 3. Sentinels and structural absence
 
-| Rule | Violations |
-|---|---:|
-| Year Built > Yr Sold | 1 |
-| Year Remod/Add < Year Built | 1 |
+We loaded the TSV with pandas defaults and again with `keep_default_na=False, na_values=[""]`. The default load masked the literal `NA` and `None` values listed in Table 2. The dictionary identifies all 14 literal-`NA` columns as structural absence. We recoded their `NA` to the category `None`, preserved the existing veneer category `None`, and kept blank cells missing. Recorded zeros remain numeric, with their field-specific meanings in Table 3.
 
-The cleaning procedure marks the conflicting year values as missing rather than inventing replacements. All 2,930 observations are retained, and the processed dataset passes the implemented validation checks. Passing validation does not guarantee that every recorded value is correct.
+## 4. Keys and duplicates
 
-## 3. Sentinels and Structural Absence
+We chose `Order` as the sale key because it is the observation number. `PID` identifies the parcel. Each key had zero missing values and zero duplicates, and there were zero exact duplicate rows. The dictionary-based neighborhood lookup matched all 2,930 rows in a validated many-to-one merge. The analysis retains the original neighborhood codes.
 
-The dataset distinguishes structural absence from genuinely unknown values. In selected basement, garage, and amenity fields, `"NA"` means that a feature does not exist, rather than that its value is unknown. These structural markers were converted to the explicit category `"None"`.
+## 5. Missingness mechanism
 
-Empty cells remain missing values. The loading procedure uses `keep_default_na=False` and `na_values=[""]` to preserve meaningful `"NA"` strings during initial import. Structural absence is also distinct from a recorded numeric zero.
+Frontage is missing in 490 sales (16.72%), and masonry veneer area is missing in 23 (0.78%). Table 4 compares the two groups for each variable. Frontage is missing for 48.9% of cul-de-sac lots versus 12.8% of inside lots, evidence against MCAR. MAR conditional on observed property characteristics is a working assumption. If frontage is MNAR, assessors might omit measurements below a minimum usable frontage for wedge-shaped lots, even among lots with the same recorded layout and area.
 
-## 4. Keys and Duplicates
+Missing veneer areas occur in homes with higher median quality and sale price. This is descriptive evidence against MCAR, with only 23 missing cases. MAR is plausible if recording varies with observed house quality or value. The comparisons cannot establish MAR or rule out dependence on the unseen measurements themselves.
 
-Both `Order` and `PID` were checked for missing and duplicate identifiers. Each was unique across all 2,930 observations, and no duplicate rows were found.
+## 6. Imputation strategy
 
-A neighborhood code-to-name lookup was prepared with a `many_to_one` merge validation rule. The lookup is intended to preserve the original observation count and ensure that every neighborhood code has a corresponding name. The modeling dataset retains the original `Neighborhood` codes.
+I choose the neighborhood median because frontage plausibly depends on observed local development patterns under MAR. It preserves more of the observed dispersion and association with lot area than the global median (Table 5 and Figure 1). The global median is the fallback when training data contain no measured frontage for a neighborhood. Both fills compress variation.
 
-## 5. Missingness Mechanism
+## 7. Leakage-safe evaluation
 
-`Lot Frontage` is missing in 490 observations (16.72%), while `Garage Yr Blt` is missing in 159 (5.43%). Of the latter, 157 observations have no garage, representing structural absence; two detached-garage records have unknown construction years.
+Linear regression predicts log sale price with 11 numeric predictors and five shuffled folds (seed 5110). Table 6 reports log-scale RMSE.
 
-For `Lot Frontage`, median `Lot Area` differs between observed and missing groups (9,248.5 versus 10,397.5), as does median `SalePrice` ($157,500 versus $173,000). Missingness also varies by neighborhood.
+1. **Which estimate is valid, and how do the others leak?** C fits neighborhood medians only on the training fold. A uses the target to define the imputation groups. B uses validation-fold frontage measurements in the full-table medians.
+2. **Which variant cannot price an unsold house?** A requires the realized sale price to assign a missing frontage to a price quintile.
+3. **How large is B versus C, and why?** C is higher by 0.00001658 on the log-price RMSE scale. Most frontages are measured, and removing one fold typically changes a neighborhood median only modestly. Those factors can explain the small change even though B leaks.
 
-These associations argue against a simple MCAR assumption. MAR is a plausible working assumption conditional on observed characteristics, but it cannot be established from these comparisons. MNAR cannot be excluded.
+## 8. Limits
 
-## 6. Imputation Strategy and Defense
+The missing measurements prevent direct verification of fill accuracy. The audit provides no causal evidence, and random cross-validation on Ames sales does not establish performance in another market or period.
 
-Two methods were compared for `Lot Frontage`: global-median imputation and neighborhood-median imputation.
+## Tables and figure
 
-| Metric | Observed | Global Median | Neighborhood Median |
+**Table 1. Raw validation failures**
+
+| Rule | Count | Repair |
+|---|---:|---|
+| Year Built > Yr Sold | 1 | Set Year Built to missing |
+| Year Remod/Add < Year Built | 1 | Set Year Remod/Add to missing |
+
+**Table 2. Literal tokens masked by default pandas parsing**
+
+| Raw token | Columns (counts) | Dictionary meaning |
+|---|---|---|
+| NA | Alley (2,732) | No alley access |
+| NA | Bsmt Qual, Bsmt Cond, Bsmt Exposure, BsmtFin Type 1, BsmtFin Type 2 (79 each) | No basement |
+| NA | Fireplace Qu (1,422) | No fireplace |
+| NA | Garage Type, Garage Finish (157 each), Garage Qual, Garage Cond (158 each) | No garage, as defined for these fields |
+| NA | Pool QC (2,917) | No pool |
+| NA | Fence (2,358) | No fence |
+| NA | Misc Feature (2,824) | No listed miscellaneous feature |
+| None | Mas Vnr Type (1,752) | No masonry veneer |
+| Empty cell | Present across multiple fields | Unrecorded value; keep missing |
+
+**Table 3. Meaning of numeric zeros in the source**
+
+| Field(s) containing zero | Why zero is retained |
+|---|---|
+| Mas Vnr Area | Zero measured veneer area indicates absence; an empty cell records no measurement. |
+| BsmtFin SF 1, BsmtFin SF 2, Bsmt Unf SF | Zero is the area of the corresponding portion. A basement can have zero area of one portion. |
+| Total Bsmt SF, 2nd Flr SF, Low Qual Fin SF | Zero square feet means the corresponding space is absent. |
+| Bsmt Full Bath, Bsmt Half Bath | Zero is a count of bathrooms of that type, including homes without a basement. |
+| Full Bath, Half Bath, Bedroom AbvGr, Kitchen AbvGr | Zero is the recorded count in the relevant scope. |
+| Fireplaces | Zero counts no fireplaces. |
+| Garage Cars, Garage Area | Zero capacity and area describe absent garages. |
+| Wood Deck SF, Open Porch SF, Enclosed Porch, 3Ssn Porch, Screen Porch, Pool Area | Zero square feet means the specified amenity is absent. |
+| Misc Val | Zero is the recorded dollar contribution of miscellaneous features. |
+
+**Table 4. Comparisons by missingness**
+
+| Target | Observed column and summary | Target observed | Target missing |
+|---|---|---:|---:|
+| Lot Frontage | Lot Area, median sq ft | 9,248.5 | 10,397.5 |
+| Lot Frontage | SalePrice, median USD | 157,500 | 173,000 |
+| Lot Frontage | Overall Qual, median | 6 | 6 |
+| Lot Frontage | Lot Config, cul-de-sac share | 92/2,440 (3.8%) | 88/490 (18.0%) |
+| Mas Vnr Area | Lot Area, median sq ft | 9,430 | 9,965 |
+| Mas Vnr Area | SalePrice, median USD | 160,000 | 207,500 |
+| Mas Vnr Area | Overall Qual, median | 6 | 7 |
+| Mas Vnr Area | Lot Config, cul-de-sac share | 178/2,907 (6.1%) | 2/23 (8.7%) |
+
+**Table 5. Imputation cost**
+
+| Metric | Observed | Global median | Neighborhood median |
 |---|---:|---:|---:|
 | Standard deviation | 23.3653 | 21.3264 | 21.7185 |
 | Correlation with Lot Area | 0.4913 | 0.3628 | 0.3891 |
 
-![Lot Frontage imputation comparison](figures/imputation_comparison.png)
-
-Neighborhood-median imputation reflects local differences and retains slightly more variation and correlation with `Lot Area` than global-median imputation. A global-median fallback handles neighborhoods lacking observed frontage values. Both methods reduce dispersion, however, and neither can recover unknown true values with certainty. These descriptive statistics do not establish imputation accuracy. For predictive evaluation, imputation parameters must be estimated from training folds only.
-
-## 7. Leakage-Safe Evaluation
-
-The prediction target was `log(SalePrice)`. Linear regression used 11 numeric predictors and five-fold shuffled cross-validation (`random_state=5110`). Performance was measured using RMSE on the log-price scale. All experiments used the cleaned dataset (`data/processed/ames_clean.csv`).
+**Table 6. Cross-validation results**
 
 | Method | Mean RMSE | SD |
 |---|---:|---:|
-| Baseline: median imputation inside pipeline | 0.1589 | 0.0140 |
-| A: SalePrice-quintile imputation before CV | 0.1588 | 0.0141 |
-| B: neighborhood imputation before CV | 0.1589 | 0.0140 |
-| C: neighborhood imputation inside CV pipeline | 0.1589 | 0.0140 |
+| Baseline, foldwise global median | 0.1589 | 0.0140 |
+| A, price quintile before CV | 0.1588 | 0.0141 |
+| B, neighborhood before CV | 0.15888687 | 0.0140 |
+| C, foldwise neighborhood | 0.15890345 | 0.0140 |
 
-Method A leaks target information because `SalePrice` determines the imputed frontage values. Method B estimates neighborhood medians using the full dataset before cross-validation, allowing validation-fold information into preprocessing. Method C learns neighborhood medians within each training fold, avoiding this preprocessing leakage.
-
-The reported RMSE differences are negligible. Method A's slightly lower RMSE does not establish better predictive performance or justify target leakage.
-
-## 8. What This Data Cannot Tell You
-
-Observed associations cannot establish causality or prove a missingness mechanism. Because the true missing frontage values are unavailable, imputation accuracy cannot be directly verified. Results from Ames also cannot establish generalization to other housing markets. Cross-validation estimates performance under the selected modeling and sampling assumptions; it does not guarantee future predictive accuracy.
+![Figure 1. Lot Frontage distributions before and after each imputation strategy](figures/imputation_comparison.png)

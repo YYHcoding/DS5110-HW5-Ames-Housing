@@ -7,7 +7,7 @@ CLEAN := data/processed/ames_clean.csv
 
 .PHONY: all validate analysis clean
 
-all: validate analysis
+all: analysis
 
 $(RAW):
 	$(PY) src/download.py $(RAW)
@@ -18,10 +18,10 @@ $(CLEAN): $(RAW) src/clean.py src/validate.py
 
 # Raw validation must fail; cleaned validation must pass.
 validate: $(RAW) $(CLEAN)
-	! $(PY) src/validate.py $(RAW) --raw
+	$(PY) src/validate.py $(RAW) --raw
 	$(PY) src/validate.py $(CLEAN)
 
-analysis: $(CLEAN) src/missingness.py src/impute.py src/evaluate.py
+analysis: validate $(CLEAN) src/missingness.py src/impute.py src/evaluate.py
 	mkdir -p reports/figures reports/results
 	$(PY) -m src.missingness $(CLEAN)
 	$(PY) -m src.impute $(CLEAN)
@@ -29,4 +29,4 @@ analysis: $(CLEAN) src/missingness.py src/impute.py src/evaluate.py
 	@echo "Analysis completed. See reports/report.md."
 
 clean:
-	rm -rf data/processed reports/figures reports/results
+	rm -rf data/processed reports/results

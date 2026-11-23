@@ -203,4 +203,6 @@ if __name__ == "__main__":
         print(f"PASS {path}")
     except ValidationError as e:
         print(f"FAIL {path}\n{e}")
-        sys.exit(1)
+        sys.exit(0 if raw else 1)
+    if raw:
+        sys.exit("Expected validation failures in the raw file")

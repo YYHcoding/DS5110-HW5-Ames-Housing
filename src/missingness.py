@@ -4,49 +4,6 @@ import pandas as pd
 
 
 
-def analyze_missingness(df: pd.DataFrame) -> None:
-    # 1. Lot Frontage missing indicator
-    df = df.copy()
-    df["LF_missing"] = df["Lot Frontage"].isna()
-
-    # 2. Missing fractions
-    for col in ["Lot Frontage", "Garage Yr Blt"]:
-        count = df[col].isna().sum()
-        fraction = df[col].isna().mean()
-        print(f"{col}: {count} missing ({fraction:.2%})")
-
-    # 3. Numeric comparisons
-    print("\nNumeric comparisons:")
-    print(
-        df.groupby("LF_missing")[
-            ["Lot Area", "SalePrice", "Year Built"]
-        ].median()
-    )
-
-    # 4. Categorical comparison
-    print("\nNeighborhood comparisons:")
-    neighborhood = df.groupby("Neighborhood")["LF_missing"].agg(
-        ["size", "sum", "mean"]
-    )
-    neighborhood.columns = ["Total", "Missing", "Missing_Rate"]
-    neighborhood["Missing_Rate"] *= 100
-
-    print(
-        neighborhood.sort_values(
-            "Missing_Rate", ascending=False
-        ).round(1)
-    )
-
-    # 5. Garage structural missingness
-    print("\nGarage missingness:")
-    print(
-        pd.crosstab(
-            df["Garage Type"],
-            df["Garage Yr Blt"].isna()
-        )
-    )
-
-
 def compare_groups(
     df: pd.DataFrame,
     col: str,
@@ -85,12 +42,11 @@ if __name__ == "__main__":
         na_values=[""],
     )
 
-    analyze_missingness(df)
-
-    print("\n=== Lot Frontage: Group Comparison ===")
-    comparison = compare_groups(
-        df,
-        "Lot Frontage",
-        ["Lot Area", "SalePrice", "Year Built", "Neighborhood"],
-    )
-    print(comparison.to_string(index=False))
+    for target in ["Lot Frontage", "Mas Vnr Area"]:
+        missing = df[target].isna()
+        print(f"\n{target}: {missing.sum()} missing ({missing.mean():.2%})")
+        comparison = compare_groups(
+            df, target, ["Lot Area", "SalePrice", "Overall Qual", "Lot Config"]
+        )
+        print(comparison.to_string(index=False))
+        print(pd.crosstab(df["Lot Config"], missing))

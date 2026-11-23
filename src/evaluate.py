@@ -73,7 +73,7 @@ def evaluate_baseline(df: pd.DataFrame) -> None:
     rmse = -scores
 
     print("Fold RMSE:", rmse.round(4))
-    print("Mean RMSE:", round(rmse.mean(), 4))
+    print("Mean RMSE:", round(rmse.mean(), 8))
     print("SD RMSE:", round(rmse.std(), 4))
 NUMERIC_FEATURES: list[str] = []   # 8 to 15 columns, including "Lot Frontage"
 CV = KFold(n_splits=5, shuffle=True, random_state=5110)
@@ -116,7 +116,7 @@ def evaluate_method_b(df: pd.DataFrame) -> None:
     rmse = -scores
 
     print("Method B Fold RMSE:", rmse.round(4))
-    print("Method B Mean RMSE:", round(rmse.mean(), 4))
+    print("Method B Mean RMSE:", round(rmse.mean(), 8))
     print("Method B SD RMSE:", round(rmse.std(), 4))
 def evaluate_method_c(df: pd.DataFrame) -> None:
     X = df[FEATURES + ["Neighborhood"]]
@@ -145,7 +145,7 @@ def evaluate_method_c(df: pd.DataFrame) -> None:
     rmse = -scores
 
     print("Method C Fold RMSE:", rmse.round(4))
-    print("Method C Mean RMSE:", round(rmse.mean(), 4))
+    print("Method C Mean RMSE:", round(rmse.mean(), 8))
     print("Method C SD RMSE:", round(rmse.std(), 4))
 
 def evaluate_method_a(df: pd.DataFrame) -> None:
@@ -195,7 +195,7 @@ def evaluate_method_a(df: pd.DataFrame) -> None:
     rmse = -scores
 
     print("Method A Fold RMSE:", rmse.round(4))
-    print("Method A Mean RMSE:", round(rmse.mean(), 4))
+    print("Method A Mean RMSE:", round(rmse.mean(), 8))
     print("Method A SD RMSE:", round(rmse.std(), 4))
 
 def main():

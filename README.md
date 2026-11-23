@@ -3,7 +3,7 @@
 ## How to run
 
 ```
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 make all
 ```
@@ -17,7 +17,7 @@ make all
 | Downloaded on | 2026-11-19 |
 | Citation | De Cock, D. (2011). Ames, Iowa: Alternative to the Boston Housing Data as an End of Semester Regression Project. Journal of Statistics Education, 19(3). |
 | Data dictionary | https://jse.amstat.org/v19n3/decock/DataDocumentation.txt |
-| Terms of use | To be verified from the original source or publisher. |
+| Terms of use | JSE permits teaching use without prior permission with attribution (dataset, contributor and access date), and requires the contributor’s consent and notification of the editor for use in published work ([JSE data-use policy](https://jse.amstat.org/jse_users.htm)). |
 | Rows, columns on arrival | 2,930 rows, 82 columns |
 
 ## Features used in Part 7
